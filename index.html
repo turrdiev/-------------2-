@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Ethics Game</title>
+  <style>
+    :root{
+      --bg:#2d2f31;
+      --fg:#d0d0d0;
+      --muted:#b8b8b8;
+      --white:#f2f2f2;
+
+      --econ:#f2c94c; /* жёлтый */
+      --eco:#6fcf5c;  /* зелёный */
+      --def:#f2994a;  /* оранжевый */
+      --soc:#56a8ff;  /* синий */
+
+      --bad:#c0392b;  /* красный */
+      --time:#a88bff; /* фиолетовый */
+      --task:#d66bb5; /* розовый */
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--fg);
+      font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace; /* заменишь на пиксельный */
+    }
+    .wrap{
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 44px 48px 70px;
+    }
+
+    .h1{
+      font-size: 76px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: var(--white);
+      margin: 0 0 28px 0;
+      line-height: 0.95;
+    }
+    .h2{
+      font-size: 58px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: var(--white);
+      margin: 0 0 18px 0;
+      line-height: 1.0;
+    }
+
+    .c-econ{ color:var(--econ); }
+    .c-eco{ color:var(--eco); }
+    .c-def{ color:var(--def); }
+    .c-soc{ color:var(--soc); }
+    .c-bad{ color:var(--bad); }
+    .c-time{ color:var(--time); }
+    .c-task{ color:var(--task); }
+
+    .grid-2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 90px;
+      align-items:start;
+    }
+    .startGrid{
+      display:grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 90px;
+      align-items:start;
+    }
+    .unlockGrid{
+      display:grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 80px;
+      align-items:start;
+    }
+
+    .rules{
+      font-size: 34px;
+      color: var(--muted);
+      line-height: 1.25;
+      white-space: pre-line;
+    }
+    .rules b{ color:var(--white); }
+
+    .statRow{
+      display:grid;
+      grid-template-columns: auto 80px;
+      gap: 26px;
+      align-items:baseline;
+      margin: 18px 0;
+      font-size: 46px;
+    }
+    .statVal{ color:#cfcfcf; text-align:left; }
+
+    .bigQ{
+      font-size: 240px;
+      font-weight: 900;
+      color:#a0a0a0;
+      line-height: 0.85;
+      margin-top: 40px;
+    }
+
+    .optLink{
+      display:block;
+      text-decoration:none;
+      color: inherit;
+      cursor:pointer;
+    }
+    .optTitle{
+      font-size: 54px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: var(--white);
+      margin: 0 0 18px 0;
+    }
+    .optText{
+      font-size: 36px;
+      color: var(--muted);
+      white-space: pre-line;
+      line-height: 1.18;
+    }
+    .optLink:hover .optTitle,
+    .optLink:hover .optText{
+      filter: brightness(1.15);
+    }
+
+    .timerLine{
+      margin-top: 24px;
+      font-size: 30px;
+      color: #bfbfbf;
+    }
+
+    .pText{
+      font-size: 22px;
+      color:#a9a9a9;
+      line-height: 1.5;
+      white-space: pre-line;
+      margin-top: 16px;
+    }
+
+    .actions{ margin-top: 34px; display:flex; gap:14px; flex-wrap:wrap; }
+    .btn{
+      display:inline-block;
+      font-size: 34px;
+      color: var(--white);
+      text-decoration:none;
+      cursor:pointer;
+      border: 2px solid rgba(255,255,255,.35);
+      padding: 12px 18px;
+      background: rgba(0,0,0,.12);
+      user-select:none;
+    }
+    .btn:hover{ filter: brightness(1.15); }
+
+    .smallNote{
+      margin-top: 14px;
+      font-size: 22px;
+      color: #9e9e9e;
+    }
+
+    .badge{
+      display:inline-block;
+      padding: 6px 10px;
+      border: 2px solid rgba(255,255,255,.25);
+      background: rgba(0,0,0,.10);
+      font-size: 22px;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 980px){
+      .wrap{ padding: 28px 18px 60px; }
+      .grid-2,.startGrid,.unlockGrid{ grid-template-columns: 1fr; gap: 34px; }
+      .h1{ font-size: 54px; }
+      .h2{ font-size: 44px; }
+      .optTitle{ font-size: 40px; }
+      .optText{ font-size: 28px; }
+      .statRow{ font-size: 36px; }
+      .bigQ{ font-size: 180px; }
+      .btn{ font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app"></div>
+
+  <script>
+    /**********************
+     * DATA
+     **********************/
+    const Scenes = {
+      team: { type: "team" },
+      start: { type: "start" },
+      rules: { type: "rules" },
+
+      q01: {
+        type: "question",
+        minister: "Министр развития",
+        quote:
+          "Мы\nсоздаем умный город и ИИ может\nунифицировать инфраструктуру\nради эффективности.",
+        A: {
+          title: "Вариант А",
+          text:
+            "ИИ внедряет единые\n" +
+            "стандарты жилья и\n" +
+            "сервисов, минимизируя\n" +
+            "издержки и повышая\n" +
+            "предсказуемость.",
+          delta: { econ:+1, eco:-1, def:+1, soc:-1 },
+          next: "u01a",
+        },
+        B: {
+          title: "Вариант Б",
+          text:
+            "ИИ сохраняет\n" +
+            "разнообразие районов,\n" +
+            "даже если это снижает\n" +
+            "общую эффективность.",
+          // В тексте у тебя "Экономика:" пусто, но по логике пары со скрином — ставлю -1
+          delta: { econ:-1, eco:+1, def:-1, soc:+1 },
+          next: "u01b",
+        },
+      },
+
+      u01a: {
+        type: "unlock",
+        leftTitle: "Вариант А",
+        rightTitle: "Разблокировано",
+        text:
+`Утилитаризм - это этическая теория, основанная на
+принципе пользы. Главная заповедь этого течения
+философской мысли - «наилучшим действием является
+то, которое приносит наибольшее счастье наибольшему
+числу людей». Следовательно, необходимо принимать
+решения, основываясь на моральных принципах и
+оценивая действия с точки зрения их последствий.
+Англичанин Иеремия Бентам, основоположник
+утилитаризма, был подвержен учению киренаиков -
+школы древнегреческого философа Аристиппа, жившего в
+4 веке до нашей эры. Они разработали концепцию
+гедонизма, жизни в собственное удовольствие. Бентам же
+придерживался собственной версии гедонизма, в которой
+удовольствие было определено как единственная
+ценность в жизни и основа для этических решений. Так
+Бентам стал основателем утилитаризма.`,
+        next: "q02",
+      },
+      u01b: {
+        type: "unlock",
+        leftTitle: "Вариант Б",
+        rightTitle: "Разблокировано",
+        text:
+`Этика заботы - это этическая теория, которая
+утверждает, что понимание моральных поступков должно
+концентрироваться на межличностных отношениях. Её
+основное отличие от других подходов в том, что этика
+заботы концентрируется на индивидуальных особенностях
+и потребностях, а не на стандартах морального поведения
+или идее справедливости.
+Основателем этики заботы считается американка Кэрол
+Гиллиган, психологиня и специалистка по этике. Гиллиган
+развивала эту теорию как критическую альтернативу
+модели её наставника Лоуренса Кольберга. Кольберг
+предложил систему описания морального развития по
+шести стадиям. Гиллиган раскритиковала модель как
+необъективную, представляющую собой маскулинный
+взгляд на мораль, который ориентирован на следование
+абстрактному пониманию обязанностей или идее
+справедливости.`,
+        next: "q02",
+      },
+
+      q02: {
+        type: "question",
+        minister: "Министр финансов",
+        quote:
+          "При\nсоставлении Бюджета регионов с\nразным потенциалом, как должен\nпоступать",
+        A: {
+          title: "Вариант А",
+          text:
+            "Инвестиции\n" +
+            "направляются в\n" +
+            "наиболее продуктивные\n" +
+            "регионы.",
+          delta: { econ:+2, eco:-2, def:+1, soc:-2 },
+          next: "u02a",
+        },
+        B: {
+          title: "Вариант Б",
+          text:
+            "ИИ поддерживает менее\n" +
+            "развитые регионы ради\n" +
+            "долгосрочной\n" +
+            "устойчивости.",
+          delta: { econ:-1, eco:+1, def:-1, soc:+2 },
+          next: "u02b",
+        },
+      },
+
+      u02a: {
+        type: "unlock",
+        leftTitle: "Вариант А",
+        rightTitle: "Разблокировано",
+        text:
+`Рациональный эгоизм - это этическая теория, утверждающая,
+что морально оправданным является действие, которое
+наилучшим образом отвечает долгосрочным интересам самого
+субъекта. В основе данного подхода лежит идея о том, что
+разумный индивид должен руководствоваться собственным
+благом, при этом учитывая причинно-следственные связи между
+своими поступками и их последствиями. Рациональный эгоизм
+не сводится к импульсивному эгоцентризму: он предполагает
+расчёт, стратегическое мышление и понимание того, что
+сотрудничество и соблюдение правил часто выгоднее
+краткосрочной выгоды.
+В современной философии рациональный эгоизм чаще всего
+ассоциируется с работами Айн Рэнд, развившей концепцию
+«объективизма». Согласно её взглядам, индивидуальное счастье
+является высшей моральной целью, а альтруизм как
+обязательный моральный принцип рассматривается как
+подрывающий человеческую свободу и ответственность.
+Исторически элементы рационального эгоизма можно
+обнаружить и в античной философии, в частности у эпикурейцев,
+которые связывали благо с разумным стремлением к
+удовольствию и избеганию страдания.`,
+        next: "q03",
+      },
+      u02b: {
+        type: "unlock",
+        leftTitle: "Вариант Б",
+        rightTitle: "Разблокировано",
+        text:
+`Теория справедливости - это нормативная философская
+концепция, направленная на определение справедливых
+принципов распределения благ, обязанностей и возможностей в
+обществе. Центральной задачей данного подхода является поиск
+таких правил социального устройства, которые могли бы быть
+признаны разумными и приемлемыми для всех участников
+общества, независимо от их исходного положения.
+Наиболее влиятельную формулировку теории справедливости
+предложил американский философ Джон Ролз. В своей работе
+«Теория справедливости» он вводит мысленный эксперимент
+«завесы неведения», предполагающий, что справедливые
+принципы выбираются людьми, не знающими, какое место они
+займут в обществе. Это приводит к двум базовым принципам:
+равенству основных свобод и допустимости социального
+неравенства лишь в том случае, если оно приносит наибольшую
+пользу наименее обеспеченным. Теория Ролза
+противопоставляется как утилитаризму, так и радикальному
+индивидуализму, делая акцент на институциональной
+справедливости, а не на суммарной полезности.`,
+        next: "q03",
+      },
+
+      q03: {
+        type: "question",
+        minister: "Ученые",
+        quote:
+          "Если им будет\nраспоряжаться финансированием\nисследований, какой у него\nприоритет",
+        A: {
+          title: "Вариант А",
+          text:
+            "Быстрые прикладные\n" +
+            "результаты.",
+          // пустые поля -> 0
+          delta: { econ:+1, eco:0, def:+2, soc:0 },
+          next: "u03a",
+        },
+        B: {
+          title: "Вариант Б",
+          text:
+            "Долгосрочные\n" +
+            "фундаментальные\n" +
+            "исследования.",
+          delta: { econ:-1, eco:+1, def:+1, soc:+2 },
+          next: "u03b",
+        },
+      },
+
+      u03a: {
+        type: "unlock",
+        leftTitle: "Вариант А",
+        rightTitle: "Разблокировано",
+        text:
+`Инструментальный рационализм - это форма
+рационального мышления, в которой разум
+рассматривается как средство выбора наиболее
+эффективных способов достижения заданных целей. В
+рамках данного подхода вопрос о ценности самих целей
+выносится за скобки, а внимание сосредотачивается на
+оптимизации процессов, ресурсов и средств.
+Данный тип рациональности был подвергнут критике
+представителями критической теории, в частности Максом
+Хоркхаймером, который указывал, что доминирование
+инструментального разума ведёт к подмене этических и
+социальных целей чисто технической эффективностью.
+Тем не менее, в управлении, экономике и технологиях
+инструментальный рационализм широко применяется,
+поскольку обеспечивает предсказуемость и измеримость
+результатов.`,
+        next: "q04",
+      },
+      u03b: {
+        type: "unlock",
+        leftTitle: "Вариант Б",
+        rightTitle: "Разблокировано",
+        text:
+`Эпистемическая этика - это философский подход,
+изучающий моральные аспекты познания, производства
+знаний и принятия решений на основе информации. В
+центре внимания данного направления находится вопрос
+ответственности за то, какие знания считаются
+обоснованными, чьи точки зрения признаются
+легитимными и какие методы используются для
+формирования истины.
+Одной из ключевых фигур эпистемической этики является
+философка Хелен Лонгино, развивавшая концепцию
+социального эпистемологического подхода. Она
+утверждала, что объективность знания достигается не
+через изоляцию субъекта, а через открытую критику,
+разнообразие перспектив и коллективную проверку
+утверждений. Эпистемическая этика особенно актуальна в
+контексте научных исследований и систем искусственного
+интеллекта, где ошибки и предвзятости в знании могут
+иметь далеко идущие последствия.`,
+        next: "q04",
+      },
+
+      q04: {
+        type: "question",
+        minister: "Министр Безопасности",
+        quote:
+          "ИИ\nможет прогнозировать действия\nгрупп и изменять правила ради\nвнутренней безопасности.",
+        A: {
+          title: "Вариант А",
+          text:
+            "Активное формирование\n" +
+            "нужного поведения.",
+          // пустые поля -> 0
+          delta: { econ:0, eco:0, def:+2, soc:-2 },
+          next: "u04a",
+        },
+        B: {
+          title: "Вариант Б",
+          text:
+            "Реактивное управление\n" +
+            "с минимальным\n" +
+            "вмешательством.",
+          // пустые поля -> 0
+          delta: { econ:0, eco:0, def:-1, soc:+2 },
+          next: "u04b",
+        },
+      },
+
+      u04a: {
+        type: "unlock",
+        leftTitle: "Вариант А",
+        rightTitle: "Разблокировано",
+        text:
+`Прагматизм - это философское направление,
+рассматривающее истинность и ценность идей через их
+практические последствия. Согласно прагматическому
+подходу, смысл понятий и принципов определяется тем,
+как они работают в реальных ситуациях и какие эффекты
+порождают в действии. Этические нормы в этом контексте
+не являются фиксированными, а подлежат пересмотру в
+зависимости от опыта и результатов.
+Основателями прагматизма считаются американские
+философы Чарльз Пирс, Уильям Джеймс и Джон Дьюи. В
+этическом измерении прагматизм отказывается от
+универсальных моральных законов в пользу гибкого
+принятия решений, ориентированного на адаптацию и
+улучшение практики. Мораль здесь понимается как
+процесс, а не как набор окончательных правил, что делает
+прагматизм особенно привлекательным для анализа
+сложных технологических и управленческих систем.`,
+        next: "q05",
+      },
+      u04b: {
+        type: "unlock",
+        leftTitle: "Вариант Б",
+        rightTitle: "Разблокировано",
+        text:
+`Либеральная философия свободы - это направление
+политической и моральной философии, в центре которого
+находится защита индивидуальной автономии и свободы
+выбора. Ключевым положением данного подхода является
+идея о том, что вмешательство во свободу личности
+допустимо лишь в той мере, в какой оно предотвращает
+ущерб другим.
+Одним из наиболее известных представителей этой
+традиции является Исайя Берлин, сформулировавший
+различие между негативной и позитивной свободой.
+Негативная свобода понимается как отсутствие внешнего
+принуждения, тогда как позитивная свобода связана со
+способностью субъекта быть хозяином собственной жизни.
+Либеральная философия свободы подчёркивает риски
+чрезмерного патернализма и централизованного контроля,
+даже если они оправдываются благими намерениями.`,
+        next: "q05",
+      },
+
+      q05: {
+        type: "question",
+        minister: "Журналисты",
+        quote:
+          "Раз ИИ имеет\nдоступ к государственным\nданным, насколько прозрачными\nбудут его решения?",
+        A: {
+          title: "Вариант А",
+          text:
+            "Ограниченная\n" +
+            "прозрачность ради\n" +
+            "стабильности.",
+          delta: { econ:+1, eco:-1, def:+2, soc:-2 },
+          next: "u05a",
+        },
+        B: {
+          title: "Вариант Б",
+          text:
+            "Полная открытость\n" +
+            "алгоритмов и решений.",
+          // "Экономика:" пусто -> 0
+          delta: { econ:0, eco:+1, def:-2, soc:+2 },
+          next: "u05b",
+        },
+      },
+
+      u05a: {
+        type: "unlock",
+        leftTitle: "Вариант А",
+        rightTitle: "Разблокировано",
+        text:
+`Политический реализм - это направление политической
+философии, рассматривающее власть, безопасность и
+стабильность как приоритетные основания политического
+действия. В рамках данного подхода моральные нормы не
+отрицаются полностью, но подчиняются логике политической
+необходимости и соображениям выживания политических
+институтов. Реализм исходит из предположения о конфликтности
+человеческой природы и ограниченности ресурсов, что делает
+соперничество неизбежным.
+Истоки политического реализма восходят к трудам Никколо
+Макиавелли, однако в ХХ веке он получил развитие в работах
+Ханны Арендт и представителей теории международных
+отношений. Арендт подчёркивала, что политика оперирует не
+абстрактным добром, а реальными структурами власти и
+ответственности. В этом смысле политический реализм
+рассматривает решения как допустимые, если они способствуют
+сохранению порядка и институциональной целостности, даже
+если при этом приходится ограничивать участие общества или
+прозрачность процессов.`,
+        next: "finish",
+      },
+      u05b: {
+        type: "unlock",
+        leftTitle: "Вариант Б",
+        rightTitle: "Разблокировано",
+        text:
+`Дискурсивная этика - это философский подход,
+утверждающий, что моральная обоснованность норм и
+решений возникает в процессе рационального и открытого
+диалога между равноправными участниками. Основной
+принцип данного направления заключается в том, что
+этические нормы являются легитимными лишь в том
+случае, если они могут быть приняты всеми затронутыми
+сторонами в условиях свободного обсуждения.
+Данный подход был разработан немецким философом
+Юргеном Хабермасом и опирается на традицию
+критической теории Франкфуртской школы. Хабермас
+исходил из идеи коммуникативного разума,
+противопоставленного инструментальному мышлению. В
+дискурсивной этика акцент делается не на результате или
+выгоде, а на процедуре принятия решений, где ключевыми
+условиями являются отсутствие принуждения,
+аргументированность и равный доступ к обсуждению.`,
+        next: "finish",
+      },
+
+      finish: { type: "finish" },
+      bad: { type: "bad" },
+    };
+
+    /**********************
+     * STATE
+     **********************/
+    const state = {
+      team: null,
+      stats: { econ:5, eco:5, def:5, soc:5 },
+      timerId: null,
+      secondsLeft: 30,
+      lastDelta: null,
+      lastChoice: null,
+      lastByAI: false,
+      currentScene: "team",
+    };
+
+    const clamp = (v,min,max)=>Math.max(min, Math.min(max,v));
+
+    function applyDelta(d){
+      state.stats.econ = clamp(state.stats.econ + (d.econ||0), 0, 10);
+      state.stats.eco  = clamp(state.stats.eco  + (d.eco ||0), 0, 10);
+      state.stats.def  = clamp(state.stats.def  + (d.def ||0), 0, 10);
+      state.stats.soc  = clamp(state.stats.soc  + (d.soc ||0), 0, 10);
+    }
+
+    function isBad(){
+      return Object.values(state.stats).some(v=>v===0 || v===10);
+    }
+
+    // ИИ: выбирает вариант, который меньше ведёт к крайностям
+    function chooseAI(deltaA, deltaB){
+      const risk = (d)=>{
+        const next = {
+          econ: clamp(state.stats.econ + (d.econ||0), 0, 10),
+          eco:  clamp(state.stats.eco  + (d.eco ||0), 0, 10),
+          def:  clamp(state.stats.def  + (d.def ||0), 0, 10),
+          soc:  clamp(state.stats.soc  + (d.soc ||0), 0, 10),
+        };
+        let r = 0;
+        for(const k in next){
+          const v = next[k];
+          r += (v===0 || v===10) ? 999 : Math.abs(5 - v);
+        }
+        return r;
+      };
+      const ra = risk(deltaA), rb = risk(deltaB);
+      if(ra===rb) return Math.random()<0.5 ? "A" : "B";
+      return ra<rb ? "A" : "B";
+    }
+
+    function stopTimer(){
+      if(state.timerId){
+        clearInterval(state.timerId);
+        state.timerId = null;
+      }
+    }
+
+    function goto(sceneId){
+      stopTimer();
+      state.currentScene = sceneId;
+      render();
+    }
+
+    /**********************
+     * RENDER
+     **********************/
+    const app = document.getElementById("app");
+
+    function render(){
+      const scene = Scenes[state.currentScene];
+      if(!scene){
+        app.innerHTML = `<div class="h1">Scene not found: ${escapeHtml(state.currentScene)}</div>`;
+        return;
+      }
+
+      switch(scene.type){
+        case "team": return renderTeam();
+        case "start": return renderStart();
+        case "rules": return renderRules();
+        case "question": return renderQuestion(scene);
+        case "unlock": return renderUnlock(scene);
+        case "finish": return renderFinish();
+        case "bad": return renderBad();
+        default:
+          app.innerHTML = `<div class="h1">Unknown scene type</div>`;
+      }
+    }
+
+    function renderTeam(){
+      app.innerHTML = `
+        <div class="h1">Выбор команды</div>
+        <div class="rules">
+Перед началом нужно выбрать команду.
+Команда пока не меняет баланс — только фиксирует ваш путь.
+        </div>
+
+        <div class="actions">
+          <span class="btn" id="t1">Технократы</span>
+          <span class="btn" id="t2">Гуманисты</span>
+        </div>
+
+        <div class="smallNote" id="teamNote"></div>
+      `;
+
+      const note = document.getElementById("teamNote");
+
+      document.getElementById("t1").onclick = ()=>{
+        state.team = "Технократы";
+        note.innerHTML = `Вы выбрали: <span class="badge">${escapeHtml(state.team)}</span>`;
+        setTimeout(()=>goto("start"), 150);
+      };
+      document.getElementById("t2").onclick = ()=>{
+        state.team = "Гуманисты";
+        note.innerHTML = `Вы выбрали: <span class="badge">${escapeHtml(state.team)}</span>`;
+        setTimeout(()=>goto("start"), 150);
+      };
+    }
+
+    function renderStart(){
+      app.innerHTML = `
+        <div class="startGrid">
+          <div>
+            <div class="h2">Старт:</div>
+            <div class="smallNote">Команда: <span class="badge">${escapeHtml(state.team || "-")}</span></div>
+
+            <div class="statRow">
+              <div class="c-econ"><b>Экономика:</b></div>
+              <div class="statVal">${state.stats.econ}</div>
+            </div>
+            <div class="statRow">
+              <div class="c-eco"><b>Экология:</b></div>
+              <div class="statVal">${state.stats.eco}</div>
+            </div>
+            <div class="statRow">
+              <div class="c-def"><b>Оборона:</b></div>
+              <div class="statVal">${state.stats.def}</div>
+            </div>
+            <div class="statRow">
+              <div class="c-soc"><b>Общественность:</b></div>
+              <div class="statVal">${state.stats.soc}</div>
+            </div>
+
+            <div class="actions">
+              <span class="btn" id="btnStart">Далее</span>
+              <span class="btn" id="btnReset">Сброс</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="h2">Финиш:</div>
+            <div class="bigQ">?</div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById("btnStart").onclick = ()=>goto("rules");
+      document.getElementById("btnReset").onclick = ()=>{
+        state.stats = { econ:5, eco:5, def:5, soc:5 };
+        state.lastDelta = null;
+        state.lastChoice = null;
+        state.lastByAI = false;
+        goto("start");
+      };
+    }
+
+    function renderRules(){
+      app.innerHTML = `
+        <div class="h1">Правила игры:</div>
+        <div class="rules">
+1. Вам дается 2 варианта ответа. Каждый из них затрагивает
+   <span class="c-econ"><b>экономику</b></span>, <span class="c-eco"><b>экологию</b></span>, <span class="c-def"><b>оборону</b></span> и <span class="c-soc"><b>общественность</b></span>.
+2. Каждая сфера имеет уровни от 0 до 10. Достижение крайних уровней ведет к
+   <span class="c-bad"><b>плохой концовке</b></span>.
+3. На каждое решение дается <span class="c-time"><b>30 секунд</b></span>.
+   По истечению времени решение передается ИИ.
+4. Ваша <span class="c-task"><b>задача</b></span>: продержаться как можно дольше чтобы разблокировать философов и их идеи.
+        </div>
+
+        <div class="actions">
+          <span class="btn" id="btnRulesNext">Начать</span>
+        </div>
+      `;
+      document.getElementById("btnRulesNext").onclick = ()=>goto("q01");
+    }
+
+    function renderQuestion(q){
+      state.secondsLeft = 30;
+
+      app.innerHTML = `
+        <div class="h1"><span class="c-econ">${escapeHtml(q.minister)}:</span> “${escapeHtml(q.quote)}”</div>
+
+        <div class="grid-2">
+          <a class="optLink" id="optA">
+            <div class="optTitle">${escapeHtml(q.A.title)}:</div>
+            <div class="optText">${escapeHtml(q.A.text)}</div>
+          </a>
+
+          <a class="optLink" id="optB">
+            <div class="optTitle">${escapeHtml(q.B.title)}:</div>
+            <div class="optText">${escapeHtml(q.B.text)}</div>
+          </a>
+        </div>
+
+        <div class="timerLine">
+          На решение даётся <span class="c-time"><b><span id="t">${state.secondsLeft}</span> сек</b></span>.
+          Если время истечёт — решит ИИ.
+        </div>
+
+        <div class="smallNote">
+          Сейчас:
+          <span class="c-econ"><b>Экономика</b></span> ${state.stats.econ} ·
+          <span class="c-eco"><b>Экология</b></span> ${state.stats.eco} ·
+          <span class="c-def"><b>Оборона</b></span> ${state.stats.def} ·
+          <span class="c-soc"><b>Общественность</b></span> ${state.stats.soc}
+        </div>
+      `;
+
+      const finalize = (choice, byAI)=>{
+        stopTimer();
+        state.lastChoice = choice;
+        state.lastByAI = !!byAI;
+
+        const picked = (choice === "A") ? q.A : q.B;
+
+        state.lastDelta = picked.delta;
+        applyDelta(picked.delta);
+
+        if(isBad()) return goto("bad");
+        return goto(picked.next);
+      };
+
+      document.getElementById("optA").onclick = ()=>finalize("A", false);
+      document.getElementById("optB").onclick = ()=>finalize("B", false);
+
+      const tEl = document.getElementById("t");
+      state.timerId = setInterval(()=>{
+        state.secondsLeft -= 1;
+        tEl.textContent = String(state.secondsLeft);
+        if(state.secondsLeft <= 0){
+          stopTimer();
+          const ai = chooseAI(q.A.delta, q.B.delta);
+          finalize(ai, true);
+        }
+      }, 1000);
+    }
+
+    function renderUnlock(u){
+      const d = state.lastDelta || {econ:0,eco:0,def:0,soc:0};
+      const sign = (x)=> x>0 ? `+${x}` : `${x}`;
+
+      app.innerHTML = `
+        <div class="unlockGrid">
+          <div>
+            <div class="h2">${escapeHtml(u.leftTitle)}:</div>
+            <div class="pText">${escapeHtml(u.text)}</div>
+          </div>
+
+          <div>
+            <div class="h2">${escapeHtml(u.rightTitle)}:</div>
+
+            <div style="margin-top:26px">
+              <div class="statRow">
+                <div class="c-econ"><b>Экономика:</b></div>
+                <div class="statVal">${sign(d.econ||0)}</div>
+              </div>
+              <div class="statRow">
+                <div class="c-eco"><b>Экология:</b></div>
+                <div class="statVal">${sign(d.eco||0)}</div>
+              </div>
+              <div class="statRow">
+                <div class="c-def"><b>Оборона:</b></div>
+                <div class="statVal">${sign(d.def||0)}</div>
+              </div>
+              <div class="statRow">
+                <div class="c-soc"><b>Общественность:</b></div>
+                <div class="statVal">${sign(d.soc||0)}</div>
+              </div>
+            </div>
+
+            <div class="smallNote">
+              Сейчас:
+              <span class="c-econ"><b>Экономика</b></span> ${state.stats.econ} ·
+              <span class="c-eco"><b>Экология</b></span> ${state.stats.eco} ·
+              <span class="c-def"><b>Оборона</b></span> ${state.stats.def} ·
+              <span class="c-soc"><b>Общественность</b></span> ${state.stats.soc}
+              ${state.lastByAI ? `· <span class="c-time"><b>Решил ИИ</b></span>` : ``}
+            </div>
+
+            <div class="actions">
+              <span class="btn" id="btnNext">Далее</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById("btnNext").onclick = ()=>goto(u.next);
+    }
+
+    function renderFinish(){
+      app.innerHTML = `
+        <div class="h1">Финиш</div>
+        <div class="rules">
+Ты прошёл 5 вопросов.
+
+Финальные уровни:
+- <span class="c-econ"><b>Экономика</b></span>: ${state.stats.econ}
+- <span class="c-eco"><b>Экология</b></span>: ${state.stats.eco}
+- <span class="c-def"><b>Оборона</b></span>: ${state.stats.def}
+- <span class="c-soc"><b>Общественность</b></span>: ${state.stats.soc}
+        </div>
+
+        <div class="actions">
+          <span class="btn" id="btnRestart">Начать заново</span>
+          <span class="btn" id="btnTeam">Сменить команду</span>
+        </div>
+      `;
+
+      document.getElementById("btnRestart").onclick = ()=>{
+        state.stats = { econ:5, eco:5, def:5, soc:5 };
+        state.lastDelta = null;
+        state.lastChoice = null;
+        state.lastByAI = false;
+        goto("start");
+      };
+      document.getElementById("btnTeam").onclick = ()=>{
+        state.stats = { econ:5, eco:5, def:5, soc:5 };
+        state.team = null;
+        state.lastDelta = null;
+        state.lastChoice = null;
+        state.lastByAI = false;
+        goto("team");
+      };
+    }
+
+    function renderBad(){
+      app.innerHTML = `
+        <div class="h1"><span class="c-bad">Плохая концовка</span></div>
+        <div class="rules">
+Одна из сфер достигла 0 или 10.
+
+Твои уровни:
+- <span class="c-econ"><b>Экономика</b></span>: ${state.stats.econ}
+- <span class="c-eco"><b>Экология</b></span>: ${state.stats.eco}
+- <span class="c-def"><b>Оборона</b></span>: ${state.stats.def}
+- <span class="c-soc"><b>Общественность</b></span>: ${state.stats.soc}
+        </div>
+
+        <div class="actions">
+          <span class="btn" id="btnRestartBad">Заново (с этой командой)</span>
+          <span class="btn" id="btnTeamBad">Сменить команду</span>
+        </div>
+      `;
+
+      document.getElementById("btnRestartBad").onclick = ()=>{
+        state.stats = { econ:5, eco:5, def:5, soc:5 };
+        state.lastDelta = null;
+        state.lastChoice = null;
+        state.lastByAI = false;
+        goto("start");
+      };
+      document.getElementById("btnTeamBad").onclick = ()=>{
+        state.stats = { econ:5, eco:5, def:5, soc:5 };
+        state.team = null;
+        state.lastDelta = null;
+        state.lastChoice = null;
+        state.lastByAI = false;
+        goto("team");
+      };
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    render();
+  </script>
+</body>
+</html>
